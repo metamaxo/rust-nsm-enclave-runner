@@ -1,0 +1,28 @@
+# Build outputs (Cargo)
+/target/
+**/target/
+
+# Nitro Enclave artifacts produced by scripts
+**/enclave-runner.eif
+**/enclave-runner-measurements.json
+**/enclave-runner-expected-pcrs.json
+**/enclave-run.json
+**/nitro-root.pem
+
+# Environment overrides / secrets
+.env
+.env.*
+!.env.example
+
+# Miscellaneous local clutter
+*.log
+*.pem
+!assets/aws-nitro-root.pem
+*.key
+*.csr
+*.srl
+.DS_Store
+.vscode/
+.idea/
+*.swp
+

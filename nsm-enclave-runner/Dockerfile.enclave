@@ -6,7 +6,7 @@ FROM amazonlinux:2023 AS builder
 
 # Toolchain for Rust (no OpenSSL headers needed; we use rustls)
 RUN dnf install -y --setopt=install_weak_deps=False \
-      git gcc gcc-c++ make pkgconf findutils curl \
+      git gcc gcc-c++ make pkgconf findutils \
   && dnf clean all && rm -rf /var/cache/dnf
 
 # Install Rust (minimal profile)
@@ -35,8 +35,8 @@ RUN dnf install -y --setopt=install_weak_deps=False \
   && update-ca-trust \
   && dnf clean all && rm -rf /var/cache/dnf
 
-# Non-root user
-RUN useradd -u 10001 -m -s /sbin/nologin app
+# Runtime runs as root because binding AF_VSOCK sockets requires elevated privileges
+# inside the Nitro enclave microVM.
 WORKDIR /app
 
 # ---- Minimal env for your slim Config ----
@@ -47,5 +47,4 @@ ENV RUNNER_LOG_LEVEL=debug \
 # Binary
 COPY --from=builder /out/enclave-runner /app/enclave-runner
 
-USER app
 ENTRYPOINT ["/app/enclave-runner"]

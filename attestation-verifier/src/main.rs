@@ -3,6 +3,7 @@ use base64::Engine as _;
 use coset::{CborSerializable, CoseSign1, TaggedCborSerializable};
 use log::debug;
 use rand::RngCore;
+use ring::digest;
 use ring::signature;
 use rustls_pemfile as pemfile;
 use serde::Deserialize;
@@ -129,6 +130,22 @@ fn basic_chain_sanity(leaf: &[u8], inters: &[Vec<u8>]) -> Result<()> {
     );
 
     Ok(())
+}
+
+fn sha256_fingerprint(data: &[u8]) -> String {
+    let digest = digest::digest(&digest::SHA256, data);
+    digest
+        .as_ref()
+        .iter()
+        .enumerate()
+        .map(|(i, b)| {
+            if i == 0 {
+                format!("{:02X}", b)
+            } else {
+                format!(":{:02X}", b)
+            }
+        })
+        .collect::<String>()
 }
 
 fn ensure_trust_anchor(x5c: &[Vec<u8>], trust_roots: &[Vec<u8>]) -> Result<()> {
@@ -314,18 +331,26 @@ async fn main() -> Result<()> {
     debug!("Built reqwest client for attestation request");
 
     debug!("Sending attestation request to https://127.0.0.1:8443/attestation");
-    let resp: AttestationResponse = client
+    let http_resp = client
         .post("https://127.0.0.1:8443/attestation")
         .json(&serde_json::json!({ "nonce_b64": nonce_b64 }))
         .send()
         .await
         .context("POST /attestation")?
         .error_for_status()
-        .context("HTTP status")?
-        .json()
+        .context("HTTP status")?;
+
+    let resp_bytes = http_resp
+        .bytes()
         .await
-        .context("read json")?;
-    debug!("Received attestation response from server");
+        .context("read attestation response body")?;
+    debug!(
+        "Received attestation response from server ({} bytes)",
+        resp_bytes.len()
+    );
+
+    let resp: AttestationResponse =
+        serde_json::from_slice(&resp_bytes).context("decode attestation response json")?;
 
     // 3) decode fields
     let b64 = &base64::engine::general_purpose::STANDARD;
@@ -377,6 +402,16 @@ async fn main() -> Result<()> {
     let mut attestation_chain = Vec::with_capacity(1 + intermediates_der.len());
     attestation_chain.push(attestation_cert_der.clone());
     attestation_chain.extend(intermediates_der.iter().cloned());
+    if let Some(root_der) = attestation_chain.last() {
+        let root_fp = sha256_fingerprint(root_der);
+        debug!(
+            "Attestation chain root SHA-256 fingerprint: {} ({} certs in chain)",
+            root_fp,
+            attestation_chain.len()
+        );
+    } else {
+        debug!("Attestation chain is empty after decoding attestation response");
+    }
 
     // 5) basic sanity checks on chain + time (lightweight)
     // (If you want strict path validation to Nitro root, say the word and I'll switch this to webpki/openssl.)
