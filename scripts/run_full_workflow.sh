@@ -5,6 +5,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONFIG_DEFAULTS="$SCRIPT_DIR/config.defaults.sh"
+CONFIG_LOCAL="$SCRIPT_DIR/config.local.sh"
+
+# shellcheck source=./config.defaults.sh
+source "$CONFIG_DEFAULTS"
+if [[ -f "$CONFIG_LOCAL" ]]; then
+  # shellcheck source=./config.local.sh
+  source "$CONFIG_LOCAL"
+fi
 
 step() {
   printf '\n==> %s\n' "$1"
@@ -22,7 +31,7 @@ step "Launching enclave"
 "$SCRIPT_DIR/run_enclave.sh" || die "run failed"
 
 step "Starting socat bridge"
-SOCAT_LOG="$REPO_ROOT/logs/socat.log"
+SOCAT_LOG="$SOCAT_LOG_PATH"
 mkdir -p "$(dirname "$SOCAT_LOG")"
 # Run socat in the background so attestation can proceed
 if "$SCRIPT_DIR/start_socat_bridge.sh" >>"$SOCAT_LOG" 2>&1 & then

@@ -39,6 +39,21 @@ All generated artifacts (EIF, measurements, PCR policy JSON, Nitro root cert,
 run metadata) live under `nsm-enclave-runner/target/enclave/` for easy archival
 or external tooling.
 
+## Configuration
+
+The scripts load opinionated defaults from `scripts/config.defaults.sh`. To
+customize them, copy the file to `scripts/config.local.sh` and adjust values
+there (the local file is ignored by git). Any environment variable you export
+before running a script also overrides the defaults.
+
+Key toggles include:
+
+- `ENCLAVE_IMAGE_TAG`: Docker tag used when building the enclave image.
+- `ENCLAVE_CPU_COUNT` / `ENCLAVE_MEMORY_MIB`: resources passed to `nitro-cli run-enclave`.
+- `ATTESTATION_HOST`, `ATTESTATION_PORT`, `ATTESTATION_PATH`: where the host fetches attestation material.
+- `SOCAT_LOG_PATH`: location for bridge logs.
+- `NITRO_ROOT_EXPECTED_FINGERPRINT`, `NITRO_ROOT_CERT_PATH`: trust anchors used during attestation verification.
+
 ## Verifier Library Usage
 
 The `attestation-verifier` crate exposes `nitro_verifier::attestation`, which you

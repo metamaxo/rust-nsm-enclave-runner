@@ -5,12 +5,22 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-RUNNER_ROOT="$REPO_ROOT/nsm-enclave-runner"
-OUT_DIR="$RUNNER_ROOT/target/enclave"
+CONFIG_DEFAULTS="$SCRIPT_DIR/config.defaults.sh"
+CONFIG_LOCAL="$SCRIPT_DIR/config.local.sh"
+
+# shellcheck source=./config.defaults.sh
+source "$CONFIG_DEFAULTS"
+if [[ -f "$CONFIG_LOCAL" ]]; then
+  # shellcheck source=./config.local.sh
+  source "$CONFIG_LOCAL"
+fi
+
+RUNNER_ROOT="$ENCLAVE_WORKSPACE_ROOT"
+OUT_DIR="$ENCLAVE_ARTIFACT_DIR"
 EIF_PATH="$OUT_DIR/enclave-runner.eif"
 RUN_INFO_PATH="$OUT_DIR/enclave-run.json"
-CPU_COUNT=1
-MEMORY_MIB=1024
+CPU_COUNT="$ENCLAVE_CPU_COUNT"
+MEMORY_MIB="$ENCLAVE_MEMORY_MIB"
 
 if [[ ! -f "$EIF_PATH" ]]; then
   echo "Enclave EIF not found at $EIF_PATH. Run scripts/build_enclave.sh first." >&2

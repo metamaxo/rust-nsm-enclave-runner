@@ -5,16 +5,26 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-RUNNER_ROOT="$REPO_ROOT/nsm-enclave-runner"
-OUT_DIR="$RUNNER_ROOT/target/enclave"
+CONFIG_DEFAULTS="$SCRIPT_DIR/config.defaults.sh"
+CONFIG_LOCAL="$SCRIPT_DIR/config.local.sh"
+
+# shellcheck source=./config.defaults.sh
+source "$CONFIG_DEFAULTS"
+if [[ -f "$CONFIG_LOCAL" ]]; then
+  # shellcheck source=./config.local.sh
+  source "$CONFIG_LOCAL"
+fi
+
+RUNNER_ROOT="$ENCLAVE_WORKSPACE_ROOT"
+OUT_DIR="$ENCLAVE_ARTIFACT_DIR"
 DOCKERFILE="$RUNNER_ROOT/Dockerfile.enclave"
-IMAGE_TAG="enclave-runner:enclave"
+IMAGE_TAG="$ENCLAVE_IMAGE_TAG"
 EIF_PATH="$OUT_DIR/enclave-runner.eif"
 MEASUREMENTS_PATH="$OUT_DIR/enclave-runner-measurements.json"
 PCRS_PATH="$OUT_DIR/enclave-runner-expected-pcrs.json"
-BUNDLED_ROOT_CERT="$REPO_ROOT/assets/aws-nitro-root.pem"
-ROOT_CERT_DEST="$OUT_DIR/nitro-root.pem"
-EXPECTED_ROOT_FINGERPRINT="64:1A:03:21:A3:E2:44:EF:E4:56:46:31:95:D6:06:31:7E:D7:CD:CC:3C:17:56:E0:98:93:F3:C6:8F:79:BB:5B"
+BUNDLED_ROOT_CERT="$NITRO_ROOT_BUNDLE_PATH"
+ROOT_CERT_DEST="$NITRO_ROOT_CERT_DEST"
+EXPECTED_ROOT_FINGERPRINT="$NITRO_ROOT_EXPECTED_FINGERPRINT"
 
 if [[ ! -f "$BUNDLED_ROOT_CERT" ]]; then
   echo "Bundled Nitro root certificate missing at $BUNDLED_ROOT_CERT" >&2

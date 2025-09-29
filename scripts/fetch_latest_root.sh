@@ -5,8 +5,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ASSETS_DIR="$REPO_ROOT/assets"
-OUTPUT_PATH="$ASSETS_DIR/aws-nitro-root.pem"
+CONFIG_DEFAULTS="$SCRIPT_DIR/config.defaults.sh"
+CONFIG_LOCAL="$SCRIPT_DIR/config.local.sh"
+
+# shellcheck source=./config.defaults.sh
+source "$CONFIG_DEFAULTS"
+if [[ -f "$CONFIG_LOCAL" ]]; then
+  # shellcheck source=./config.local.sh
+  source "$CONFIG_LOCAL"
+fi
+
+OUTPUT_PATH="$NITRO_ROOT_BUNDLE_PATH"
+ATTESTATION_URL="https://${ATTESTATION_HOST}:${ATTESTATION_PORT}${ATTESTATION_PATH}"
 
 for bin in curl jq python3 base64 openssl; do
   if ! command -v "$bin" >/dev/null 2>&1; then
@@ -15,7 +25,7 @@ for bin in curl jq python3 base64 openssl; do
   fi
 done
 
-mkdir -p "$ASSETS_DIR"
+mkdir -p "$(dirname "$OUTPUT_PATH")"
 
 nonce=$(python3 - <<'PY'
 import os, base64
@@ -23,11 +33,11 @@ print(base64.b64encode(os.urandom(32)).decode())
 PY
 )
 
-echo "Requesting attestation document from https://127.0.0.1:8443/attestation"
+echo "Requesting attestation document from $ATTESTATION_URL"
 response=$(curl -sS -k -X POST \
   -H 'content-type: application/json' \
   --data "{\"nonce_b64\": \"$nonce\"}" \
-  https://127.0.0.1:8443/attestation)
+  "$ATTESTATION_URL")
 
 if [[ -z "$response" ]]; then
   echo "Empty response from attestation endpoint" >&2
