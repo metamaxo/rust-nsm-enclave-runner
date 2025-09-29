@@ -21,23 +21,18 @@ Install the following on the parent instance:
 ## Typical Flow
 
 ```bash
-# 1. Build the enclave image, EIF, measurements, and expected PCR policy
+# One-command path (build → run → bridge → verify)
+./scripts/run_full_workflow.sh
+
+# Or, invoke the individual steps:
 ./scripts/build_enclave.sh
-
-# 2. Launch the enclave (writes run metadata to nsm-enclave-runner/target/enclave)
 ./scripts/run_enclave.sh
-
-# 3. (Optional) watch the enclave console
-./scripts/open_enclave_console.sh
-
-# 4. Forward host TCP port 8443 → enclave vsock 8443 for HTTPS access
 ./scripts/start_socat_bridge.sh
-
-# 5. Verify attestation using the nitro_verifier CLI (library backed)
 ./scripts/run_attestation_verifier.sh
-
-# 6. Reset extracted artifacts if you want a clean slate
-./scripts/cleanup_workspace.sh
+# Optional:
+./scripts/open_enclave_console.sh     # watch enclave serial console
+./scripts/cleanup_workspace.sh        # stop socat/enclaves, remove build outputs
+./scripts/purge_workspace.sh          # stop helpers and delete unpacked repo contents
 ```
 
 All generated artifacts (EIF, measurements, PCR policy JSON, Nitro root cert,
@@ -71,7 +66,7 @@ scripts.
 
 ## Project Layout
 
-- `nsm-enclave-runner/`: enclave runtime, REST API, and Docker context
-- `attestation-verifier/`: library + CLI for attestation verification
-- `scripts/`: convenience scripts for building/running/verifying the enclave
-- `assets/`: bundled Nitro root certificate and other static assets
+- `nsm-enclave-runner/`: enclave runtime, REST API, Docker context
+- `attestation-verifier/`: verifier crate + CLI (exposes `nitro_verifier::attestation`)
+- `scripts/`: orchestration helpers (`run_full_workflow`, cleanup/purge, etc.)
+- `assets/`: bundled Nitro root certificate and related static assets

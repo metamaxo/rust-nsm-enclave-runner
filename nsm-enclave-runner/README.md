@@ -24,15 +24,19 @@ parse it independently.
 Use the helper scripts from the repository root:
 
 ```bash
-./scripts/build_enclave.sh      # builds Docker image + EIF + measurements
-./scripts/run_enclave.sh        # launches the enclave and records run info
-./scripts/start_socat_bridge.sh # forwards host 8443 → enclave vsock 8443
+./scripts/run_full_workflow.sh        # build → run → bridge → verify end-to-end
+
+# individual steps if you prefer manual control
+./scripts/build_enclave.sh
+./scripts/run_enclave.sh
+./scripts/start_socat_bridge.sh
+./scripts/run_attestation_verifier.sh
+
+# optional helpers
+./scripts/open_enclave_console.sh      # attach to enclave serial console
+./scripts/cleanup_workspace.sh         # stop socat/enclaves, prune build outputs
+./scripts/purge_workspace.sh           # nuke unpacked repo + generated files
 ```
-
-Optional helpers:
-
-- `./scripts/open_enclave_console.sh` – attach to the enclave serial console
-- `./scripts/cleanup_workspace.sh` – remove generated artifacts
 
 Artifacts for this crate are emitted under `nsm-enclave-runner/target/enclave/`
 (EIF, measurement JSON, PCR policy, Nitro root certificate, run metadata).
@@ -40,6 +44,6 @@ Artifacts for this crate are emitted under `nsm-enclave-runner/target/enclave/`
 ## Companion Verifier
 
 The `attestation-verifier` crate (`nitro_verifier` library / CLI) validates
-responses emitted by `/attestation`. The script
-`./scripts/run_attestation_verifier.sh` drives the CLI with the correct PCR
-policy and root certificate to provide an end-to-end sanity check.
+responses emitted by `/attestation`. Use `./scripts/run_attestation_verifier.sh`
+or the one-shot `./scripts/run_full_workflow.sh` to exercise the entire flow
+with pinned roots and PCR policy.
