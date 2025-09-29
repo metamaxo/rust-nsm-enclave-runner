@@ -22,6 +22,8 @@ docs/
 *.key
 *.csr
 *.srl
+.tarignore
+tg-client.tar.gz
 .DS_Store
 .vscode/
 .idea/
