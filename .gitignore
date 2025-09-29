@@ -8,6 +8,7 @@
 **/enclave-runner-expected-pcrs.json
 **/enclave-run.json
 **/nitro-root.pem
+docs/
 
 # Environment overrides / secrets
 .env
@@ -25,4 +26,3 @@
 .vscode/
 .idea/
 *.swp
-

@@ -11,6 +11,7 @@ ITEMS=(
   "tg-client.tar.gz"
   "attestation-verifier"
   "nsm-enclave-runner"
+  "assets"
   "scripts"
 )
 

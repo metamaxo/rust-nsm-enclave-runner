@@ -8,14 +8,17 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNNER_ROOT="$REPO_ROOT/nsm-enclave-runner"
 VERIFIER_ROOT="$REPO_ROOT/attestation-verifier"
 OUT_DIR="$RUNNER_ROOT/target/enclave"
+ASSETS_DIR="$REPO_ROOT/assets"
+ROOT_CERT_PATH="$ASSETS_DIR/aws-nitro-root.pem"
 
-export NITRO_ROOT_PEM_PATH="$OUT_DIR/nitro-root.pem"
 export NITRO_MEASUREMENTS_PATH="$OUT_DIR/enclave-runner-measurements.json"
 export NITRO_EXPECTED_PCRS_PATH="$OUT_DIR/enclave-runner-expected-pcrs.json"
 
-if [[ ! -f "$NITRO_ROOT_PEM_PATH" ]]; then
-  echo "Nitro root certificate missing at $NITRO_ROOT_PEM_PATH. Re-run scripts/build_enclave.sh." >&2
+if [[ ! -f "$ROOT_CERT_PATH" ]]; then
+  echo "Nitro root certificate missing at $ROOT_CERT_PATH. Restore assets/aws-nitro-root.pem." >&2
   exit 1
 fi
 
-cargo run --manifest-path "$VERIFIER_ROOT/Cargo.toml"
+unset NITRO_ROOT_PEM_PATH || true
+
+cargo run --manifest-path "$VERIFIER_ROOT/Cargo.toml" -- "$ROOT_CERT_PATH"

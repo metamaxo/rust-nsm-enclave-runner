@@ -26,3 +26,9 @@ rustls-pemfile = "2"
 
 # signature verification
 ring = "0.17"
+
+# certificate handling
+thiserror = "1"
+
+[dev-dependencies]
+rcgen = "0.12"

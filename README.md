@@ -1,54 +1,77 @@
-## Nitro Enclave Workflow
+# Nitro Enclave Workflow
 
-The scripts in `scripts/` hard-code the paths and tags used by the project, so
-you can walk the entire enclave build → run → verify loop without extra flags.
-They assume `docker`, `nitro-cli`, `jq`, `socat`, and `sudo` are installed on the host.
+This repository contains two major pieces:
 
-1. **Build artifacts**
-   ```bash
-   ./scripts/build_enclave.sh
-   ```
-   - Produces the Docker image `enclave-runner:enclave`
-   - Emits `nsm-enclave-runner/target/enclave/enclave-runner.eif`
-   - Saves `nsm-enclave-runner/target/enclave/enclave-runner-measurements.json`
-   - Saves `nsm-enclave-runner/target/enclave/enclave-runner-expected-pcrs.json`
-   - Stages the bundled Nitro root cert (`assets/aws-nitro-root.pem`) to `nsm-enclave-runner/target/enclave/nitro-root.pem`
-   > Verifies the SHA-256 fingerprint equals `64:1A:03:21:A3:E2:44:EF:E4:56:46:31:95:D6:06:31:7E:D7:CD:CC:3C:17:56:E0:98:93:F3:C6:8F:79:BB:5B`
+- `nsm-enclave-runner`: the enclave application that serves attestation material
+  over HTTPS.
+- `attestation-verifier` (`nitro_verifier` crate): a reusable library + CLI for
+  validating AWS Nitro Enclave attestation responses.
 
-2. **Launch the enclave**
-   ```bash
-   ./scripts/run_enclave.sh
-   ```
-   - Terminates any existing enclave, then runs the EIF headlessly
-   - Stores the `nitro-cli run-enclave` output in `nsm-enclave-runner/target/enclave/enclave-run.json`
-   - Prints the new Enclave ID and CID
+The scripts under `scripts/` orchestrate the full build → run → verify loop with
+opinionated defaults so you can iterate quickly on a workstation.
 
-3. **(Optional) Watch the console**
-   ```bash
-   ./scripts/open_enclave_console.sh
-   ```
-   Uses the saved Enclave ID to attach to the serial console.
+## Prerequisites
 
-4. **Expose the HTTPS endpoint to the host**
-   ```bash
-   ./scripts/start_socat_bridge.sh
-   ```
-   Forwards host TCP port `8443` → enclave CID/port `8443` using `socat`.
+Install the following on the parent instance:
 
-5. **Run attestation verification from the host**
-   ```bash
-   ./scripts/run_attestation_verifier.sh
-   ```
-   Runs the companion verifier (`attestation-verifier`) with the measurements
-   produced in step 1. The script sets the required env vars so the verifier can
-   compare PCRs and trust roots automatically.
+- Docker with Nitro Enclaves support
+- `nitro-cli` and the Nitro kernel modules (`sudo nitro-cli configure-enclave`)
+- `jq`, `socat`, `curl`, and `sudo`
 
-All intermediate files live under `nsm-enclave-runner/target/enclave/`, making it easy to archive
-or feed into external tooling.
+## Typical Flow
 
-6. **Reset workspace before re-applying a patch**
-   ```bash
-   ./scripts/cleanup_workspace.sh
-   ```
-   Removes extracted artifacts (including this directory) so you can unpack a fresh archive.
+```bash
+# 1. Build the enclave image, EIF, measurements, and expected PCR policy
+./scripts/build_enclave.sh
 
+# 2. Launch the enclave (writes run metadata to nsm-enclave-runner/target/enclave)
+./scripts/run_enclave.sh
+
+# 3. (Optional) watch the enclave console
+./scripts/open_enclave_console.sh
+
+# 4. Forward host TCP port 8443 → enclave vsock 8443 for HTTPS access
+./scripts/start_socat_bridge.sh
+
+# 5. Verify attestation using the nitro_verifier CLI (library backed)
+./scripts/run_attestation_verifier.sh
+
+# 6. Reset extracted artifacts if you want a clean slate
+./scripts/cleanup_workspace.sh
+```
+
+All generated artifacts (EIF, measurements, PCR policy JSON, Nitro root cert,
+run metadata) live under `nsm-enclave-runner/target/enclave/` for easy archival
+or external tooling.
+
+## Verifier Library Usage
+
+The `attestation-verifier` crate exposes `nitro_verifier::attestation`, which you
+can embed in other projects. Minimal example:
+
+```rust
+use nitro_verifier::attestation::{Verifier, VerifierConfig};
+use std::time::Duration;
+
+let mut cfg = VerifierConfig::default();
+cfg.root_pem_paths.push("assets/aws-nitro-root.pem".into());
+cfg.freshness = Duration::from_secs(300);
+// populate cfg.expected_pcrs / expected_measurement as needed
+
+let verifier = Verifier::new(cfg)?;
+let response_body = /* JSON from /attestation */;
+let expected_nonce = "...base64 nonce...";
+let attn = verifier.verify_json(&response_body, expected_nonce)?;
+println!("module {} attested with root {}", attn.module_id, attn.root_fingerprint_sha256);
+```
+
+The CLI located in `attestation-verifier/src/main.rs` is built on top of this
+API and remains the quickest way to validate responses produced by the helper
+scripts.
+
+## Project Layout
+
+- `nsm-enclave-runner/`: enclave runtime, REST API, and Docker context
+- `attestation-verifier/`: library + CLI for attestation verification
+- `scripts/`: convenience scripts for building/running/verifying the enclave
+- `assets/`: bundled Nitro root certificate and other static assets
