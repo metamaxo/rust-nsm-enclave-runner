@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+/// High-level error taxonomy consumers can match on when verification fails.
 pub enum AttnError {
     #[error("nonce mismatch")]
     NonceMismatch,

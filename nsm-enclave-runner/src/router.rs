@@ -10,6 +10,7 @@ use tracing::Level;
 use crate::handlers::*;
 use crate::state::PublicState;
 
+/// Constructs the public HTTP router (health + attestation) with middleware.
 pub fn build_public_router(state: PublicState) -> Router {
     Router::new()
         .route("/health", get(health))

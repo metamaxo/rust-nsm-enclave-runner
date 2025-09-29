@@ -9,20 +9,24 @@ use std::collections::BTreeMap;
 use tokio::signal;
 use tracing::{debug, warn};
 
+/// Liveness probe endpoint.
 pub async fn ready() -> &'static str {
     "ready"
 }
 
 #[derive(Serialize)]
+/// Static response body for `/health`.
 pub struct Health {
     pub status: &'static str,
 }
 
+/// Readiness/health-check endpoint used by the parent instance.
 pub async fn health(State(_state): State<PublicState>) -> (StatusCode, Json<Health>) {
     (StatusCode::OK, Json(Health { status: "ok" }))
 }
 
 #[derive(Deserialize)]
+/// Incoming JSON body for `/attestation` requests.
 pub struct AttestationRequest {
     /// Verifier-provided nonce (base64). Must be fresh/single-use on verifier side.
     pub nonce_b64: String,
@@ -120,6 +124,7 @@ pub async fn attestation_handler(
     }
 }
 
+/// Blocks until Ctrl+C (or SIGTERM on Unix) to trigger graceful shutdown.
 pub async fn shutdown_signal() {
     let ctrl_c = async { signal::ctrl_c().await.expect("install Ctrl+C handler") };
     #[cfg(unix)]

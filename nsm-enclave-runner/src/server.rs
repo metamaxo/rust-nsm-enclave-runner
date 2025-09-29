@@ -8,6 +8,7 @@ use tokio_util::sync::CancellationToken;
 use tokio_vsock::VsockListener;
 use tracing::{info, warn};
 
+/// Accepts VSOCK connections, upgrades them to TLS, and serves the provided Axum app.
 pub async fn serve_axum_https_with_listener(
     mut listener: VsockListener,
     app: Router,

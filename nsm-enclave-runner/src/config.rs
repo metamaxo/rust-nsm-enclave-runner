@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::net::SocketAddr;
 
 #[derive(Clone, Debug, Deserialize)]
+/// Runtime configuration loaded from `RUNNER_*` environment variables.
 pub struct Config {
     pub log_level: Option<String>,
 
@@ -10,6 +11,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Populates the configuration from environment variables, honoring `.env`.
     pub fn from_env() -> anyhow::Result<Self> {
         tracing::debug!("fetching config");
         let _ = dotenvy::dotenv();
@@ -17,6 +19,7 @@ impl Config {
         Ok(cfg)
     }
 
+    /// Handy defaults for local development/tests.
     pub fn dev() -> anyhow::Result<Self> {
         Ok(Config {
             log_level: Some("debug".to_string()),
@@ -24,6 +27,7 @@ impl Config {
         })
     }
 
+    /// Emit the effective configuration via tracing.
     pub fn info(&self) {
         tracing::info!(public_addr = %self.public_addr, "effective config");
         if self.public_addr.ip().is_unspecified() {

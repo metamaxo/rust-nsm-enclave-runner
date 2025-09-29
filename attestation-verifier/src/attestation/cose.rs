@@ -8,6 +8,7 @@ use serde_cbor::Value as CborValue;
 use std::collections::HashMap;
 
 #[derive(Debug)]
+/// Decoded payload extracted from the COSE_Sign1 attestation document.
 pub struct ParsedCose {
     pub nonce: Vec<u8>,
     pub public_key: Vec<u8>,
@@ -18,6 +19,8 @@ pub struct ParsedCose {
     pub pcrs: HashMap<String, Vec<u8>>,
 }
 
+/// Validates the COSE signature using the attestation leaf public key and
+/// returns the parsed CBOR payload.
 pub fn verify_quote(quote_b64: &str, leaf_public_key: &[u8]) -> Result<ParsedCose, AttnError> {
     let quote = b64
         .decode(quote_b64.as_bytes())
@@ -196,6 +199,7 @@ fn pcr_map_from_value(value: &CborValue) -> Result<HashMap<String, Vec<u8>>, Att
     Ok(out)
 }
 
+/// Accepts either raw fixed-width signatures or DER-encoded ones and normalises to raw.
 fn normalize_ecdsa_signature(sig: &[u8], expected_len: usize) -> Result<Vec<u8>, String> {
     if sig.len() == expected_len {
         return Ok(sig.to_vec());

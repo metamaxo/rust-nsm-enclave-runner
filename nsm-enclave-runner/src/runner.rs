@@ -14,6 +14,7 @@ use crate::{
     tls::{build_tls_keypair, tls_server_no_client_auth, TlsBundle},
 };
 
+/// Top-level orchestrator for the enclave HTTP server.
 pub struct Runner {
     cfg: Config,
     pub_state: PublicState,
@@ -23,6 +24,7 @@ pub struct Runner {
 }
 
 impl Runner {
+    /// Bind a VSOCK listener on the provided port, annotating errors with context.
     async fn bind(addr: SocketAddr, description: &str) -> Result<VsockListener> {
         let port = addr.port() as u32;
         let vsock_addr = VsockAddr::new(VMADDR_CID_ANY, port);
@@ -36,6 +38,7 @@ impl Runner {
         build_tls_keypair(cfg).await.context("TLS init failed")
     }
 
+    /// Constructs the runtime, including TLS material, listeners, and shared state.
     pub async fn new(cfg: Config) -> Result<Self> {
         tracing::debug!("building runner");
         CryptoProvider::install_default(crypto::ring::default_provider())
@@ -65,6 +68,7 @@ impl Runner {
         })
     }
 
+    /// Runs the enclave server until a shutdown signal is received.
     pub async fn run(self) -> Result<()> {
         tracing::debug!("starting runner");
         let shutdown = self.shutdown.clone();

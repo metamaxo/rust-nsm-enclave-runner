@@ -8,6 +8,7 @@ use std::io::Cursor;
 use std::path::PathBuf;
 use x509_parser::prelude::*;
 
+/// Captured data for a single trusted root certificate.
 pub struct RootMetadata {
     pub fingerprint: String,
     pub subject_raw: Vec<u8>,
@@ -15,11 +16,13 @@ pub struct RootMetadata {
     pub der: Vec<u8>,
 }
 
+/// Trust store with metadata and quick fingerprint lookups.
 pub struct RootStore {
     pub metadata: Vec<RootMetadata>,
     pub fingerprints: HashSet<String>,
 }
 
+/// Loads PEM-encoded roots from disk and filters them against an allow-list.
 pub fn load_pinned_roots(
     paths: &[PathBuf],
     allow_fps: &HashSet<String>,
@@ -59,12 +62,14 @@ pub fn load_pinned_roots(
     })
 }
 
+/// Minimal certificate chain summary produced after validation.
 pub struct ChainSummary {
     pub leaf_fingerprint: String,
     pub root_fingerprint: String,
     pub root_subject: String,
 }
 
+/// Validates the attestation leaf + intermediates against the pinned roots.
 pub fn verify_chain(
     leaf_der: &[u8],
     intermediates: &[Vec<u8>],

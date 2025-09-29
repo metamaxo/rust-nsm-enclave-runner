@@ -7,6 +7,7 @@ use super::util::{constant_time_eq, decode_b64, now_millis};
 use crate::attestation::certs::{load_pinned_roots, verify_chain, ChainSummary, RootStore};
 use x509_parser::prelude::*;
 
+/// Attestation verifier with cached trust anchors.
 pub struct Verifier {
     cfg: VerifierConfig,
     roots: RootStore,
@@ -14,6 +15,7 @@ pub struct Verifier {
 }
 
 impl Verifier {
+    /// Constructs a verifier and pre-loads root certificates according to `cfg`.
     pub fn new(cfg: VerifierConfig) -> anyhow::Result<Self> {
         let root_store = load_pinned_roots(&cfg.root_pem_paths, &cfg.allowed_root_fingerprints)?;
         let fingerprint_subject = root_store
@@ -28,6 +30,7 @@ impl Verifier {
         })
     }
 
+    /// Verifies an attestation JSON document produced by the enclave runner.
     pub fn verify_json(
         &self,
         json: &str,
@@ -38,6 +41,7 @@ impl Verifier {
         self.verify_envelope(&env, expected_nonce_b64)
     }
 
+    /// Verifies a parsed attestation envelope against the expected nonce.
     pub fn verify_envelope(
         &self,
         env: &AttestationEnvelope,
@@ -152,6 +156,7 @@ impl Verifier {
     }
 }
 
+/// Decodes base64-encoded intermediates from the attestation response, keeping non-self-signed nodes.
 fn decode_cabundle(entries: &[String]) -> Result<Vec<Vec<u8>>, AttnError> {
     let mut out = Vec::with_capacity(entries.len());
     for entry in entries {

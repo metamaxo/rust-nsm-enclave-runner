@@ -8,24 +8,44 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
 pub struct ParsedAttestationDoc {
+    /// Module identifier expressed in the attestation payload.
     pub module_id: String,
+    /// Digest algorithm used for the PCR bank (e.g. `SHA384`).
     pub digest: String,
+    /// Timestamp emitted by NSM (milliseconds since Unix epoch).
     pub timestamp_ms: u64,
+    /// Echoed nonce bound into the document.
     pub nonce: Vec<u8>,
+    /// TLS SubjectPublicKeyInfo (DER) bound into the attestation.
     pub public_key: Vec<u8>,
+    /// Optional user data blob returned by NSM.
     pub user_data: Option<Vec<u8>>,
+    /// Attestation signing certificate DER.
     pub certificate: Vec<u8>,
+    /// Intermediates/root certificates that complete the chain.
     pub cabundle: Vec<Vec<u8>>,
+    /// PCR values keyed by PCR index.
     pub pcrs: BTreeMap<u32, Vec<u8>>,
 }
 
+/// Material emitted by NSM plus derived metadata we expose to HTTP handlers.
 pub struct NsmAttestationOut {
+    /// Raw COSE_Sign1 document returned by the NSM driver.
     pub quote: Vec<u8>,
+    /// Policy identifier for consumers (currently static).
     pub policy: String,
+    /// Crate version embedded so verifiers know the producer.
     pub runner_version: String,
+    /// Parsed representation of the attestation document.
     pub doc: ParsedAttestationDoc,
 }
 
+/// Produces a fresh attestation document bound to the provided TLS SPKI and nonce.
+///
+/// This call must run inside an enclave (it talks to `/dev/nsm`). Validation is
+/// performed on the inputs to avoid surprising driver errors, then the actual
+/// driver interaction is moved onto a blocking thread to keep the async runtime
+/// responsive.
 pub async fn build_nsm_attestation(spki_der: &[u8], nonce: &[u8]) -> Result<NsmAttestationOut> {
     if !std::path::Path::new("/dev/nsm").exists() {
         return Err(anyhow!(
@@ -46,6 +66,7 @@ pub async fn build_nsm_attestation(spki_der: &[u8], nonce: &[u8]) -> Result<NsmA
         .map_err(|e| anyhow!("spawn_blocking join error: {e}"))?
 }
 
+/// Performs the synchronous NSM driver round-trip and parses the response.
 fn get_doc_sync_driver(spki_der: &[u8], nonce: &[u8]) -> Result<NsmAttestationOut> {
     // Optional binding of SPKI+nonce in user_data for verifiers to recompute
     let mut h = Sha512::new();
@@ -88,6 +109,7 @@ fn get_doc_sync_driver(spki_der: &[u8], nonce: &[u8]) -> Result<NsmAttestationOu
     })
 }
 
+/// Decodes the COSE/CBOR attestation payload and validates a few invariants.
 fn parse_attestation_doc(
     quote: &[u8],
     expected_spki: &[u8],

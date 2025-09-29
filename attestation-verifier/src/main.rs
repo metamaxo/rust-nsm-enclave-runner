@@ -10,6 +10,7 @@ type CliResult<T> = Result<T, anyhow::Error>;
 
 const AWS_COMMERCIAL_ROOT_FP: &str = "64:1A:03:21:A3:E2:44:EF:E4:56:46:31:95:D6:06:31:7E:D7:CD:CC:3C:17:56:E0:98:93:F3:C6:8F:79:BB:5B";
 
+/// CLI entrypoint: loads policy configuration, fetches attestation, and prints a summary.
 #[tokio::main]
 async fn main() -> CliResult<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
@@ -50,6 +51,7 @@ async fn main() -> CliResult<()> {
     }
 }
 
+/// Decide which root certificate PEM to trust based on CLI/env input.
 fn resolve_root_pem_path() -> CliResult<PathBuf> {
     if let Ok(path) = env::var("NITRO_ROOT_PEM_PATH") {
         return Ok(PathBuf::from(path));
@@ -62,6 +64,7 @@ fn resolve_root_pem_path() -> CliResult<PathBuf> {
     ))
 }
 
+/// Load the expected PCR json snapshot from disk.
 fn load_expected_pcrs() -> CliResult<HashMap<u8, Vec<u8>>> {
     let (_, json) = read_json_from_env("NITRO_EXPECTED_PCRS_PATH")?;
     let mut map = HashMap::new();
@@ -77,6 +80,7 @@ fn load_expected_pcrs() -> CliResult<HashMap<u8, Vec<u8>>> {
     Ok(map)
 }
 
+/// Convenience helper for fetching the expected measurement (PCR0) if present.
 fn load_expected_measurement() -> Result<Vec<u8>, anyhow::Error> {
     let (_, json) = read_json_from_env("NITRO_MEASUREMENTS_PATH")?;
     let measurement = json
@@ -87,6 +91,7 @@ fn load_expected_measurement() -> Result<Vec<u8>, anyhow::Error> {
     hex_to_bytes(measurement)
 }
 
+/// Read and parse a JSON file whose path is provided via environment variable.
 fn read_json_from_env(var: &str) -> CliResult<(PathBuf, JsonValue)> {
     let path = env::var(var)
         .map(PathBuf::from)
@@ -98,6 +103,7 @@ fn read_json_from_env(var: &str) -> CliResult<(PathBuf, JsonValue)> {
     Ok((path, json))
 }
 
+/// Decode a hex string that may optionally be prefixed with `0x`.
 fn hex_to_bytes(hex_str: &str) -> CliResult<Vec<u8>> {
     let trimmed = hex_str.trim_start_matches("0x");
     let bytes =
@@ -105,6 +111,7 @@ fn hex_to_bytes(hex_str: &str) -> CliResult<Vec<u8>> {
     Ok(bytes)
 }
 
+/// Generates a nonce, posts it to the local attestation endpoint, and returns both.
 async fn fetch_attestation() -> CliResult<(String, String)> {
     let mut nonce = vec![0u8; 32];
     rand::thread_rng().fill_bytes(&mut nonce);
@@ -126,6 +133,7 @@ async fn fetch_attestation() -> CliResult<(String, String)> {
     Ok((nonce_b64, body))
 }
 
+/// Human-friendly rendering of `AttnError` variants for CLI output.
 fn format_attn_error(err: AttnError) -> String {
     match err {
         AttnError::NonceMismatch => "nonce mismatch".into(),

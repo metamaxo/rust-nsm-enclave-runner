@@ -5,6 +5,7 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
+/// Parameters that drive signature verification, trust anchors, and policy checks.
 pub struct VerifierConfig {
     /// One or more PEM files containing AWS Nitro Enclaves root(s) you trust.
     pub root_pem_paths: Vec<PathBuf>,

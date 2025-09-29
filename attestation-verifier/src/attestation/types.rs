@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 #[derive(Debug)]
+/// Summary returned to callers after successful verification.
 pub struct VerifiedAttestation {
     pub module_id: String,
     pub timestamp_ms: u64,
@@ -13,6 +14,7 @@ pub struct VerifiedAttestation {
 }
 
 #[derive(Debug, Deserialize)]
+/// Shape of the JSON envelope produced by the enclave runner.
 pub struct AttestationEnvelope {
     pub attestation: AttestationBlock,
     /// Runner HTTPS leaf cert (DER, base64) – used only for SPKI binding (optional).
@@ -21,6 +23,7 @@ pub struct AttestationEnvelope {
 }
 
 #[derive(Debug, Deserialize)]
+/// Inner attestation block that mirrors the NSM payload and helper metadata.
 pub struct AttestationBlock {
     /// Raw NSM AttestationDocument, base64 (COSE_Sign1 over CBOR payload)
     pub quote_b64: String,

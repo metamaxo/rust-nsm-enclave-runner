@@ -5,6 +5,7 @@ use crate::attestation::util::{eq_hex, sha256_fingerprint};
 use hex::FromHex;
 use std::fmt::Write;
 
+/// Ensures measured PCRs match local policy (including optional PCR0 shortcut).
 pub fn verify_pcr_policy(
     cfg: &VerifierConfig,
     block: &AttestationBlock,

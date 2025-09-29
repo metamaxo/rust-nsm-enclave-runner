@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tracing::{debug, info, warn};
 use zeroize::Zeroize;
 
-use rcgen::{Certificate, CertificateParams}; // rcgen = "0.12"
+use rcgen::{Certificate, CertificateParams};
 use x509_parser::prelude::*;
 
 /// TLS-only bundle (no attestation)

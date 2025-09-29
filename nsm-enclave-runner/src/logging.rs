@@ -3,6 +3,7 @@ use sha2::{Digest, Sha256, Sha384};
 use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
 
+/// Install a `tracing` subscriber using either `RUNNER_LOG_LEVEL` or `RUST_LOG`.
 pub fn setup_logging(cfg: &Config) {
     let default = cfg.log_level.as_deref().unwrap_or("info");
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default));

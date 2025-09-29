@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(Clone)]
+/// Immutable state cloned into HTTP handlers.
 pub struct PublicState {
     /// Self-signed TLS certificate (DER) the server presents.
     pub cert_der: Arc<[u8]>,
@@ -12,6 +13,7 @@ pub struct PublicState {
 }
 
 #[derive(serde::Serialize)]
+/// JSON response envelope sent back to verifiers.
 pub struct AttestationResponse {
     /// Fields coming from the fresh NSM attestation (built per verifier nonce).
     pub attestation: AttestationFields,
@@ -20,6 +22,7 @@ pub struct AttestationResponse {
 }
 
 #[derive(serde::Serialize)]
+/// Detailed attestation fields returned by `/attestation`.
 pub struct AttestationFields {
     /// Raw NSM COSE_Sign1 attestation (base64).
     pub quote_b64: String,
