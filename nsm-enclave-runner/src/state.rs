@@ -1,18 +1,10 @@
+use base64::engine::general_purpose::STANDARD as b64;
+use base64::Engine as _;
+use rustls::ServerConfig;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-#[derive(Clone)]
-/// Immutable state cloned into HTTP handlers.
-pub struct PublicState {
-    /// Self-signed TLS certificate (DER) the server presents.
-    pub cert_der: Arc<[u8]>,
-    /// SPKI (DER) of the TLS cert's public key; bind this in NSM attestation.
-    pub spki_der: Arc<[u8]>,
-    // If you don't actually use a sealed store elsewhere, delete it entirely.
-    // pub store: Arc<sealed_state::MemStore>,
-}
-
-#[derive(serde::Serialize)]
+#[derive(Clone, serde::Serialize)]
 /// JSON response envelope sent back to verifiers.
 pub struct AttestationResponse {
     /// Fields coming from the fresh NSM attestation (built per verifier nonce).
@@ -21,7 +13,7 @@ pub struct AttestationResponse {
     pub cert_der_b64: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(Clone, serde::Serialize)]
 /// Detailed attestation fields returned by `/attestation`.
 pub struct AttestationFields {
     /// Raw NSM COSE_Sign1 attestation (base64).
@@ -58,4 +50,75 @@ pub struct AttestationFields {
     /// Attestation signing certificate DER emitted by NSM (base64).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attestation_cert_der_b64: Option<String>,
+}
+
+/// RA-TLS materials shared between the listener and HTTP handlers.
+#[derive(Clone)]
+pub struct RaTlsMaterial {
+    pub server_config: Arc<ServerConfig>,
+    pub attestation: AttestationResponse,
+    #[allow(dead_code)]
+    pub generated_at: std::time::SystemTime,
+    pub cert_der: Arc<[u8]>,
+    pub spki_der: Arc<[u8]>,
+}
+
+/// Build `AttestationFields` from the result emitted by NSM.
+pub fn attestation_fields_from_nsm(out: &crate::attest::NsmAttestationOut) -> AttestationFields {
+    let doc = &out.doc;
+
+    let cabundle_der_b64 = if doc.cabundle.is_empty() {
+        None
+    } else {
+        Some(doc.cabundle.iter().map(|c| b64.encode(c)).collect())
+    };
+
+    let mut pcrs_hex = BTreeMap::new();
+    for (idx, value) in &doc.pcrs {
+        pcrs_hex.insert(idx.to_string(), hex::encode(value));
+    }
+    let measurement_hex = pcrs_hex.get("0").cloned();
+
+    let user_data_b64 = doc.user_data.as_ref().map(|ud| b64.encode(ud));
+
+    AttestationFields {
+        quote_b64: b64.encode(&out.quote),
+        nonce_b64: b64.encode(&doc.nonce),
+        spki_der_b64: b64.encode(&doc.public_key),
+        policy: out.policy.clone(),
+        runner_version: out.runner_version.clone(),
+        cabundle_der_b64,
+        pcrs_hex: if pcrs_hex.is_empty() {
+            None
+        } else {
+            Some(pcrs_hex)
+        },
+        measurement_hex,
+        module_id: Some(doc.module_id.clone()),
+        digest: Some(doc.digest.clone()),
+        timestamp_ms: Some(doc.timestamp_ms),
+        user_data_b64,
+        attestation_cert_der_b64: Some(b64.encode(&doc.certificate)),
+    }
+}
+
+/// Combine previously computed attestation fields with the presented TLS certificate.
+pub fn attestation_response_from_fields(
+    fields: AttestationFields,
+    cert_der: &[u8],
+) -> AttestationResponse {
+    let cert_der_b64 = b64.encode(cert_der);
+    AttestationResponse {
+        attestation: fields,
+        cert_der_b64,
+    }
+}
+
+/// Convenience helper that generates the full attestation response for a TLS session.
+pub fn attestation_response_from_nsm(
+    out: &crate::attest::NsmAttestationOut,
+    cert_der: &[u8],
+) -> AttestationResponse {
+    let fields = attestation_fields_from_nsm(out);
+    attestation_response_from_fields(fields, cert_der)
 }
